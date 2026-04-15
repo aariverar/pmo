@@ -1,0 +1,11 @@
+# Entorno virtual Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos temporales
+*.tmp
+*.log
+Thumbs.db
+.DS_Store
