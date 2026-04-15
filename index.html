@@ -439,6 +439,52 @@
     .progress-fill.amber { background: var(--amber); }
     .progress-fill.red   { background: var(--red); }
 
+    /* ===================== FILTRO GLOBAL FECHAS ===================== */
+    .global-filter-bar {
+      background: #1a1a1a;
+      padding: 10px 24px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+      border-bottom: 2px solid var(--red);
+    }
+    .global-filter-bar .gf-label {
+      color: rgba(255,255,255,.7); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px; white-space: nowrap;
+    }
+    .global-filter-bar .gf-sep {
+      color: rgba(255,255,255,.3); font-size: 18px;
+    }
+    .global-filter-bar input[type="date"] {
+      background: rgba(255,255,255,.08);
+      border: 1.5px solid rgba(255,255,255,.2);
+      color: #fff; border-radius: 6px;
+      padding: 6px 12px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: var(--transition);
+      color-scheme: dark;
+    }
+    .global-filter-bar input[type="date"]:focus {
+      outline: none; border-color: var(--red);
+      background: rgba(255,255,255,.14);
+    }
+    .global-filter-bar input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1); opacity: .7; cursor: pointer;
+    }
+    .gf-range-info {
+      font-size: 12px; color: rgba(255,255,255,.55);
+      font-style: italic; flex: 1; text-align: right;
+    }
+    .btn-gf-clear {
+      background: transparent; color: rgba(255,255,255,.6);
+      border: 1px solid rgba(255,255,255,.25); border-radius: 5px;
+      padding: 5px 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: var(--transition); white-space: nowrap;
+    }
+    .btn-gf-clear:hover { border-color: var(--red); color: var(--red-light); }
+    .gf-active-badge {
+      background: var(--red); color: #fff;
+      border-radius: 10px; padding: 2px 8px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+
     /* ===================== MODAL CARGA EXCEL ===================== */
     .modal-overlay {
       display: none; position: fixed; inset: 0;
@@ -561,6 +607,23 @@
   <button onclick="switchTab('tab-detalle',this)">📋 Detalle Desglosado</button>
   <button onclick="switchTab('tab-fechas',this)">📅 Fechas &amp; Pivot</button>
 </nav>
+
+<!-- ==================== FILTRO GLOBAL DE FECHAS ==================== -->
+<div class="global-filter-bar" id="globalFilterBar" style="display:none">
+  <span class="gf-label">📅 Filtro Global · Fecha Requerida:</span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="gf-label" style="font-size:10px">DESDE</span>
+    <input type="date" id="gfDesde" onchange="aplicarFiltroGlobal()" />
+  </div>
+  <span class="gf-sep">→</span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span class="gf-label" style="font-size:10px">HASTA</span>
+    <input type="date" id="gfHasta" onchange="aplicarFiltroGlobal()" />
+  </div>
+  <button class="btn-gf-clear" onclick="limpiarFiltroGlobal()">✕ Limpiar fechas</button>
+  <span class="gf-range-info" id="gfRangeInfo">Sin filtro aplicado — mostrando todos los registros</span>
+  <span class="gf-active-badge" id="gfBadge" style="display:none">🔍 Filtro activo</span>
+</div>
 
 <!-- ==================== MAIN ==================== -->
 <main>
@@ -910,6 +973,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function renderTodo() {
+  // Mostrar barra de filtro global
+  const bar = document.getElementById('globalFilterBar');
+  if (bar) bar.style.display = 'flex';
+
   populateFilters();
   renderKPIs();
   renderCharts();
@@ -924,8 +991,9 @@ function renderTodo() {
 }
 
 function mostrarPantallaBienvenida() {
-  // Ocultar las tabs y mostrar pantalla vacía
+  // Ocultar las tabs, filtro global y mostrar pantalla vacía
   document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('globalFilterBar').style.display = 'none';
   document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
 
   // Inyectar pantalla de bienvenida en el main
@@ -1025,6 +1093,7 @@ function ocultarPantallaBienvenida() {
       </div>
     `;
     document.getElementById('navTabs').style.display = 'flex';
+    document.getElementById('globalFilterBar').style.display = 'flex';
   }
 }
 
@@ -1038,13 +1107,81 @@ function populateFilters() {
   ['fFrente2','dFrente','pFrente','tFrente'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
+    sel.innerHTML = '<option value="">Todos</option>';
     frentes.forEach(f => { const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o); });
   });
   ['dFrenteDep'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
+    sel.innerHTML = '<option value="">Todos</option>';
     frenteDep.forEach(f => { const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o); });
   });
+
+  // Precargar rango de fechas disponibles en los inputs
+  const fechas = DATA.map(r=>r['Fecha requerida']).filter(Boolean).sort();
+  if (fechas.length) {
+    const minF = fechas[0];
+    const maxF = fechas[fechas.length-1];
+    const gfDesde = document.getElementById('gfDesde');
+    const gfHasta = document.getElementById('gfHasta');
+    if (gfDesde) { gfDesde.min = minF; gfDesde.max = maxF; }
+    if (gfHasta) { gfHasta.min = minF; gfHasta.max = maxF; }
+    document.getElementById('gfRangeInfo').textContent =
+      `Rango disponible: ${minF} → ${maxF} (${DATA.length} registros)`;
+  }
+}
+
+// ============================================================
+//  FILTRO GLOBAL DE FECHAS
+// ============================================================
+function getFilteredData() {
+  const desde = document.getElementById('gfDesde')?.value || '';
+  const hasta = document.getElementById('gfHasta')?.value || '';
+  if (!desde && !hasta) return DATA;
+  return DATA.filter(r => {
+    const f = r['Fecha requerida'];
+    if (!f) return false;
+    if (desde && f < desde) return false;
+    if (hasta && f > hasta) return false;
+    return true;
+  });
+}
+
+function aplicarFiltroGlobal() {
+  const desde = document.getElementById('gfDesde').value;
+  const hasta = document.getElementById('gfHasta').value;
+  const fd = getFilteredData();
+  const badge  = document.getElementById('gfBadge');
+  const info   = document.getElementById('gfRangeInfo');
+
+  if (desde || hasta) {
+    badge.style.display = 'inline';
+    info.textContent = `Filtrando: ${desde||'inicio'} → ${hasta||'fin'} · ${fd.length} registros de ${DATA.length}`;
+  } else {
+    badge.style.display = 'none';
+    const fechas = DATA.map(r=>r['Fecha requerida']).filter(Boolean).sort();
+    info.textContent = fechas.length
+      ? `Rango disponible: ${fechas[0]} → ${fechas[fechas.length-1]} (${DATA.length} registros)`
+      : 'Sin filtro aplicado — mostrando todos los registros';
+  }
+
+  // Refrescar todo el dashboard con los datos filtrados
+  renderKPIs();
+  renderCharts();
+  renderAlertas();
+  renderAvanceFrente();
+  renderTopResponsables();
+  renderResumenFrente();
+  renderFrentesCards();
+  renderDetalle();
+  renderPivot();
+  renderTimeline();
+}
+
+function limpiarFiltroGlobal() {
+  document.getElementById('gfDesde').value = '';
+  document.getElementById('gfHasta').value = '';
+  aplicarFiltroGlobal();
 }
 
 // ============================================================
@@ -1061,16 +1198,17 @@ function switchTab(tabId, btn) {
 //  KPIs
 // ============================================================
 function renderKPIs() {
-  const total = DATA.length;
-  const resuelta = DATA.filter(r=>r['Estado']==='4.Resuelta').length;
-  const enProgreso = DATA.filter(r=>r['Estado']==='3.En progreso').length;
-  const solicitada = DATA.filter(r=>r['Estado']==='2.Solicitada').length;
-  const identificada = DATA.filter(r=>r['Estado']==='1.Identificada').length;
-  const alta = DATA.filter(r=>r['Criticidad'].toLowerCase()==='alta').length;
-  const pct = Math.round(resuelta/total*100);
+  const D = getFilteredData();
+  const total = D.length;
+  const resuelta = D.filter(r=>r['Estado']==='4.Resuelta').length;
+  const enProgreso = D.filter(r=>r['Estado']==='3.En progreso').length;
+  const solicitada = D.filter(r=>r['Estado']==='2.Solicitada').length;
+  const identificada = D.filter(r=>r['Estado']==='1.Identificada').length;
+  const alta = D.filter(r=>r['Criticidad'].toLowerCase()==='alta').length;
+  const pct = total ? Math.round(resuelta/total*100) : 0;
 
   // Dependencias vencidas (fecha requerida pasada, no resuelta)
-  const vencidas = DATA.filter(r => {
+  const vencidas = D.filter(r => {
     if (r['Estado']==='4.Resuelta') return false;
     const d = fmtDate(r['Fecha requerida']);
     return d && d < today;
@@ -1105,9 +1243,10 @@ const COLORS_CRIT = ['#B71C1C','#F57F17','#1B5E20','#455A64'];
 const COLORS_TIPO = ['#EC0000','#1565C0','#2E7D32','#6A1B9A','#00695C'];
 
 function renderCharts() {
+  const D = getFilteredData();
   // Frentes
-  const frentes = unique(DATA.map(r=>r['Frente']));
-  const countFrentes = frentes.map(f => DATA.filter(r=>r['Frente']===f).length);
+  const frentes = unique(D.map(r=>r['Frente']));
+  const countFrentes = frentes.map(f => D.filter(r=>r['Frente']===f).length);
 
   destroyChart('chartFrente');
   charts['chartFrente'] = new Chart(document.getElementById('chartFrente'), {
@@ -1121,7 +1260,7 @@ function renderCharts() {
 
   // Estado
   const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
-  const countEst = estados.map(e => DATA.filter(r=>r['Estado']===e).length);
+  const countEst = estados.map(e => D.filter(r=>r['Estado']===e).length);
   destroyChart('chartEstado');
   charts['chartEstado'] = new Chart(document.getElementById('chartEstado'), {
     type:'doughnut',
@@ -1133,7 +1272,7 @@ function renderCharts() {
 
   // Criticidad
   const crits = ['Alta','Medio','Baja','Media'];
-  const countCrit = crits.map(c => DATA.filter(r=>r['Criticidad']===c).length);
+  const countCrit = crits.map(c => D.filter(r=>r['Criticidad']===c).length);
   destroyChart('chartCriticidad');
   charts['chartCriticidad'] = new Chart(document.getElementById('chartCriticidad'), {
     type:'pie',
@@ -1145,7 +1284,7 @@ function renderCharts() {
 
   // Tipo dependencia
   const tipos = ['Técnica','Funcional','Infraestructura','Data','Arquitectura'];
-  const countTipo = tipos.map(t => DATA.filter(r=>r['Tipo de dependencia']===t).length);
+  const countTipo = tipos.map(t => D.filter(r=>r['Tipo de dependencia']===t).length);
   destroyChart('chartTipo');
   charts['chartTipo'] = new Chart(document.getElementById('chartTipo'), {
     type:'bar',
@@ -1161,20 +1300,23 @@ function renderCharts() {
 //  ALERTAS
 // ============================================================
 function renderAlertas() {
-  const vencidas = DATA.filter(r => {
+  const D = getFilteredData();
+  const vencidas = D.filter(r => {
     if (r['Estado']==='4.Resuelta') return false;
     const d = fmtDate(r['Fecha requerida']);
     return d && d < today;
   });
-  const alta = DATA.filter(r=>r['Criticidad'].toLowerCase()==='alta' && r['Estado']!=='4.Resuelta');
-  const sinResp = DATA.filter(r=>!r['Responsable'] && r['Estado']!=='4.Resuelta');
-  const proximas = DATA.filter(r => {
+  const alta = D.filter(r=>r['Criticidad'].toLowerCase()==='alta' && r['Estado']!=='4.Resuelta');
+  const sinResp = D.filter(r=>!r['Responsable'] && r['Estado']!=='4.Resuelta');
+  const proximas = D.filter(r => {
     if (r['Estado']==='4.Resuelta') return false;
     const d = fmtDate(r['Fecha requerida']);
     if(!d) return false;
     const diff = (d - today) / (1000*3600*24);
     return diff >= 0 && diff <= 7;
   });
+  const resueltas = D.filter(r=>r['Estado']==='4.Resuelta').length;
+  const pctRes = D.length ? Math.round(resueltas/D.length*100) : 0;
 
   const box = document.getElementById('alertasBox');
   box.innerHTML = `
@@ -1202,8 +1344,8 @@ function renderAlertas() {
     <div class="alert-box alert-green">
       <div class="alert-icon">✅</div>
       <div class="alert-body">
-        <div class="alert-title">Resueltas: ${DATA.filter(r=>r['Estado']==='4.Resuelta').length} de ${DATA.length}</div>
-        <div>Porcentaje de avance: ${Math.round(DATA.filter(r=>r['Estado']==='4.Resuelta').length/DATA.length*100)}%</div>
+        <div class="alert-title">Resueltas: ${resueltas} de ${D.length}</div>
+        <div>Porcentaje de avance: ${pctRes}%</div>
       </div>
     </div>
     ${sinResp.length ? `<div class="alert-box alert-blue">
@@ -1220,13 +1362,11 @@ function renderAlertas() {
 //  AVANCE POR FRENTE
 // ============================================================
 function renderAvanceFrente() {
-  const frentes = unique(DATA.map(r=>r['Frente']));
-  const colores = {
-    0:'red', 25:'red', 50:'amber', 75:'', 100:''
-  };
+  const D = getFilteredData();
+  const frentes = unique(D.map(r=>r['Frente']));
   const rows = frentes.map(f => {
-    const tot = DATA.filter(r=>r['Frente']===f).length;
-    const res = DATA.filter(r=>r['Frente']===f && r['Estado']==='4.Resuelta').length;
+    const tot = D.filter(r=>r['Frente']===f).length;
+    const res = D.filter(r=>r['Frente']===f && r['Estado']==='4.Resuelta').length;
     const pct = tot ? Math.round(res/tot*100) : 0;
     const cls = pct >= 75 ? '' : pct >= 50 ? 'amber' : 'red';
     return `
@@ -1248,7 +1388,8 @@ function renderAvanceFrente() {
 //  TOP RESPONSABLES
 // ============================================================
 function renderTopResponsables() {
-  const activos = DATA.filter(r=>r['Estado']!=='4.Resuelta' && r['Responsable']);
+  const D = getFilteredData();
+  const activos = D.filter(r=>r['Estado']!=='4.Resuelta' && r['Responsable']);
   const count = {};
   activos.forEach(r => { count[r['Responsable']] = (count[r['Responsable']]||0)+1; });
   const sorted = Object.entries(count).sort((a,b)=>b[1]-a[1]).slice(0,12);
@@ -1273,11 +1414,12 @@ function renderTopResponsables() {
 //  RESUMEN FRENTE (tabla)
 // ============================================================
 function renderResumenFrente() {
-  const frentesDep = unique(DATA.map(r=>r['Frente con dependencia']));
+  const D = getFilteredData();
+  const frentesDep = unique(D.map(r=>r['Frente con dependencia']));
   const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
 
   const rows = frentesDep.map(fd => {
-    const items = DATA.filter(r=>r['Frente con dependencia']===fd);
+    const items = D.filter(r=>r['Frente con dependencia']===fd);
     const tot = items.length;
     const est = estados.map(e => items.filter(r=>r['Estado']===e).length);
     const res = est[3];
@@ -1343,7 +1485,7 @@ function renderFrentesCards() {
   const estFilt = document.getElementById('fEstado2').value;
   const critFilt= document.getElementById('fCrit2').value;
 
-  let data = DATA;
+  let data = getFilteredData();
   if (frFilt)   data = data.filter(r=>r['Frente']===frFilt);
   if (estFilt)  data = data.filter(r=>r['Estado']===estFilt);
   if (critFilt) data = data.filter(r=>r['Criticidad'].toLowerCase()===critFilt.toLowerCase());
@@ -1431,7 +1573,7 @@ function getDetalleFiltered() {
   const resp = document.getElementById('dResp').value.toLowerCase();
   const txt  = document.getElementById('dBuscar').value.toLowerCase();
 
-  return DATA.filter(r => {
+  return getFilteredData().filter(r => {
     if (fr   && r['Frente']!==fr) return false;
     if (fd   && r['Frente con dependencia']!==fd) return false;
     if (est  && r['Estado']!==est) return false;
@@ -1594,7 +1736,7 @@ function renderPivot() {
   const frFil = document.getElementById('pFrente').value;
   const estFil= document.getElementById('pEstado').value;
 
-  let data = DATA;
+  let data = getFilteredData();
   if (frFil)  data = data.filter(r=>r['Frente']===frFil);
   if (estFil) data = data.filter(r=>r['Estado']===estFil);
 
@@ -1723,7 +1865,7 @@ function renderTimeline() {
   const estFil= document.getElementById('tEstado').value;
   const venFil= document.getElementById('tVencidas').value;
 
-  let data = DATA;
+  let data = getFilteredData();
   if (frFil)  data = data.filter(r=>r['Frente']===frFil);
   if (estFil) data = data.filter(r=>r['Estado']===estFil);
   if (venFil==='1') {
