@@ -1140,7 +1140,8 @@ function getFilteredData() {
   if (!desde && !hasta) return DATA;
   return DATA.filter(r => {
     const f = r['Fecha requerida'];
-    if (!f) return false;
+    // f debe ser 'yyyy-mm-dd' gracias a la normalización en cargarHoja()
+    if (!f || typeof f !== 'string' || f.length < 10) return false;
     if (desde && f < desde) return false;
     if (hasta && f > hasta) return false;
     return true;
@@ -2072,27 +2073,57 @@ function cargarHoja() {
     setModalStatus('info', '⏳ Procesando datos...');
     const ws = _workbook.Sheets[sheetName];
 
-    // Convertir a JSON — raw:false para que las fechas se formateen como strings
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false });
+    // raw:true + cellDates:true → SheetJS entrega Date objects para celdas de fecha
+    // Usamos sheet_to_json con raw:true para recibir los valores crudos (números seriales o Date)
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
 
     if (!raw.length) {
       setModalStatus('error', '❌ La hoja seleccionada no tiene datos.');
       return;
     }
 
-    // Normalizar nombres de columnas (quitar espacios extra)
+    // Columnas de fecha que deben normalizarse a yyyy-mm-dd
+    const DATE_COLS = ['Fecha requerida', 'Fecha Nueva', 'Fecha acordada'];
+
+    // Helper: convierte cualquier valor de celda de fecha a string 'yyyy-mm-dd'
+    function toISODateStr(val) {
+      if (!val && val !== 0) return '';
+      // Ya es objeto Date (cellDates:true)
+      if (val instanceof Date && !isNaN(val)) {
+        return val.toISOString().substring(0, 10);
+      }
+      // Número serial de Excel (días desde 1899-12-30)
+      if (typeof val === 'number' && val > 1000) {
+        const d = XLSX.SSF.parse_date_code(val);
+        if (d) {
+          const mm = String(d.m).padStart(2,'0');
+          const dd = String(d.d).padStart(2,'0');
+          return `${d.y}-${mm}-${dd}`;
+        }
+      }
+      // String ISO o ISO con hora
+      const s = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+      // String formato dd/mm/yyyy
+      const dmY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmY) return `${dmY[3]}-${dmY[2].padStart(2,'0')}-${dmY[1].padStart(2,'0')}`;
+      // String formato m/d/yyyy (US)
+      const mDY = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mDY) return `${mDY[3]}-${mDY[1].padStart(2,'0')}-${mDY[2].padStart(2,'0')}`;
+      return '';
+    }
+
+    // Normalizar columnas
     const normalized = raw.map(row => {
       const out = {};
       for (const k in row) {
         const key = k.trim();
         let val = row[k];
-        // Normalizar fechas tipo "2026-02-05T00:00:00.000Z" o "45628"
-        if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
-          val = val.substring(0, 10);
-        } else if (val instanceof Date) {
-          val = val.toISOString().substring(0, 10);
+        if (DATE_COLS.includes(key)) {
+          out[key] = toISODateStr(val);
+        } else {
+          out[key] = val === null || val === undefined ? '' : String(val).trim();
         }
-        out[key] = val === null || val === undefined ? '' : String(val).trim();
       }
       return out;
     });
