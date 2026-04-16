@@ -677,13 +677,13 @@
     </div>
 
     <!-- Top responsables -->
-    <div class="section-title"><span class="icon">👤</span> Top de Frentes con Dependencias</div>
+    <div class="section-title"><span class="icon">👤</span> Top de Frentes con más Dependencias</div>
     <div class="chart-card" style="margin-bottom:28px">
       <div class="chart-wrap" style="height:380px"><canvas id="chartResponsables"></canvas></div>
     </div>
 
-    <!-- Top Frente Proveedor -->
-    <div class="section-title"><span class="icon">🏭</span> Top Frentes Proveedores con más Dependencias Activas</div>
+    <!-- Top Responsables -->
+    <div class="section-title"><span class="icon">👥</span> Top de Responsables</div>
     <div class="chart-card" style="margin-bottom:28px">
       <div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div>
     </div>
@@ -914,7 +914,7 @@ const RAW_DATA = [];  // Los datos se cargan desde el Excel
 // ============================================================
 //  UTILIDADES
 // ============================================================
-const today = new Date('2026-04-15');
+const today = new Date(); today.setHours(0,0,0,0);
 
 function fmtDate(str) {
   if (!str || str === '0' || str === 'TBD' || str === 'nan') return null;
@@ -1061,9 +1061,9 @@ function ocultarPantallaBienvenida() {
           <div><div class="section-title"><span class="icon">🚨</span> Alertas de Gestión</div><div id="alertasBox"></div></div>
           <div><div class="section-title"><span class="icon">📈</span> Avance por Frente</div><div id="avanceFrente"></div></div>
         </div>
-        <div class="section-title"><span class="icon">👤</span> Top Responsables con más Dependencias Activas</div>
+        <div class="section-title"><span class="icon">👤</span> Top de Frentes con más Dependencias</div>
         <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:380px"><canvas id="chartResponsables"></canvas></div></div>
-        <div class="section-title"><span class="icon">🏭</span> Top Frentes Proveedores con más Dependencias Activas</div>
+        <div class="section-title"><span class="icon">👥</span> Top de Responsables</div>
         <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div></div>
         <div class="section-title"><span class="icon">📌</span> Frentes con Dependencia – Vista Resumen</div>
         <div id="resumenFrenteWrap"></div>
@@ -1257,10 +1257,15 @@ function renderKPIs() {
 let charts = {};
 function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
 
-const COLORS_RED = ['#EC0000','#FF4444','#A30000','#FF7777','#CC0000','#FF9999','#800000'];
-const COLORS_STATE = ['#1565C0','#F57C00','#6A1B9A','#2E7D32'];
-const COLORS_CRIT = ['#B71C1C','#F57F17','#1B5E20','#455A64'];
-const COLORS_TIPO = ['#EC0000','#1565C0','#2E7D32','#6A1B9A','#00695C'];
+// Paleta gerencial unificada (4 colores base + repetición cíclica)
+const G_PALETTE = ['#EC0000','#4A90D9','#767676','#CCCCCC'];
+function gColor(i) { return G_PALETTE[i % G_PALETTE.length]; }
+function gColors(n) { return Array.from({length:n}, (_,i) => gColor(i)); }
+
+const COLORS_RED   = gColors(7);
+const COLORS_STATE = gColors(4);
+const COLORS_CRIT  = gColors(4);
+const COLORS_TIPO  = gColors(5);
 
 // Helper: convierte 'yyyy-mm-dd' a etiqueta de semana 'YYYY-Wnn (dd/mm - dd/mm)'
 function isoWeekLabel(dateStr) {
@@ -1371,22 +1376,34 @@ function renderAlertas() {
   const box = document.getElementById('alertasBox');
   if (!box) return;
   const D = getFilteredData();
-  const vencidas = D.filter(r => {
-    if (r['Estado']==='4.Resuelta') return false;
+
+  // Vencidas: sumatoria de Identificadas + Solicitadas + En Progreso
+  const ESTADOS_ACTIVOS = ['1.Identificada','2.Solicitada','3.En progreso'];
+  const vencidas = D.filter(r => ESTADOS_ACTIVOS.includes(r['Estado']));
+
+  // Criticidad Alta: mismo conteo que el gráfico Criticidad (todos los registros con Alta, sin filtro de estado)
+  const alta = D.filter(r =>
+    r['Criticidad'] && r['Criticidad'].trim().toLowerCase() === 'alta'
+  );
+
+  const sinResp = D.filter(r => !r['Responsable'] && r['Estado'] !== '4.Resuelta');
+
+  // Próximos 7 días: busca en DATA completo los 7 días posteriores a HASTA (o a hoy si no hay HASTA)
+  // Se usa DATA directamente porque esos registros quedan fuera del rango filtrado
+  const hastaVal = document.getElementById('gfHasta')?.value || '';
+  const refStart = hastaVal ? new Date(hastaVal + 'T00:00:00') : new Date(today);
+  refStart.setDate(refStart.getDate() + 1);
+  const refEnd = new Date(refStart); refEnd.setDate(refStart.getDate() + 6);
+
+  const proximas = DATA.filter(r => {
+    if (r['Estado'] === '4.Resuelta') return false;
     const d = fmtDate(r['Fecha requerida']);
-    return d && d < today;
+    if (!d) return false;
+    return d >= refStart && d <= refEnd;
   });
-  const alta = D.filter(r=>r['Criticidad'].toLowerCase()==='alta' && r['Estado']!=='4.Resuelta');
-  const sinResp = D.filter(r=>!r['Responsable'] && r['Estado']!=='4.Resuelta');
-  const proximas = D.filter(r => {
-    if (r['Estado']==='4.Resuelta') return false;
-    const d = fmtDate(r['Fecha requerida']);
-    if(!d) return false;
-    const diff = (d - today) / (1000*3600*24);
-    return diff >= 0 && diff <= 7;
-  });
-  const resueltas = D.filter(r=>r['Estado']==='4.Resuelta').length;
-  const pctRes = D.length ? Math.round(resueltas/D.length*100) : 0;
+
+  const resueltas = D.filter(r => r['Estado'] === '4.Resuelta').length;
+  const pctRes = D.length ? Math.round(resueltas / D.length * 100) : 0;
 
   box.innerHTML = `
     <div class="alert-box alert-red">
@@ -1475,11 +1492,8 @@ function renderTopResponsables() {
   D.filter(r=>r['Responsable']).forEach(r=>{ respCount[r['Responsable']]=(respCount[r['Responsable']]||0)+1; });
   const topResponsables = Object.entries(respCount).sort((a,b)=>b[1]-a[1]).slice(0,10).map(x=>x[0]);
 
-  // Paleta de colores para responsables
-  const palette = [
-    '#EC0000','#1565C0','#2E7D32','#6A1B9A','#00695C',
-    '#E65100','#AD1457','#37474F','#F9A825','#00838F'
-  ];
+  // Paleta gerencial para responsables
+  const palette = G_PALETTE.concat(G_PALETTE.map(c => c + 'BB'));
 
   const datasets = topResponsables.map((resp, i) => ({
     label: resp,
@@ -1510,41 +1524,88 @@ function renderTopResponsables() {
       indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, padding:8 } },
-        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.raw}` } }
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.raw}` } },
+        // Plugin inline para mostrar el total al final de cada barra
+        afterDraw: undefined
       },
       scales:{
         x:{ beginAtZero:true, stacked:true, grid:{color:'rgba(0,0,0,.05)'} },
         y:{ stacked:true, grid:{display:false} }
       }
-    }
+    },
+    plugins:[{
+      id:'totalLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, data } = chart;
+        const totals = data.labels.map((_, i) =>
+          data.datasets.reduce((s, ds) => s + (ds.data[i] || 0), 0)
+        );
+        ctx.save();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        data.labels.forEach((_, i) => {
+          const meta = chart.getDatasetMeta(data.datasets.length - 1);
+          const bar = meta.data[i];
+          if (bar) {
+            const x = bar.x + 6;
+            const y = bar.y;
+            ctx.fillText(totals[i], x, y);
+          }
+        });
+        ctx.restore();
+      }
+    }]
   });
 }
 
 // ============================================================
-//  TOP FRENTES PROVEEDORES
+//  TOP RESPONSABLES (simple, por columna Responsable)
 // ============================================================
 function renderTopFrenteProveedor() {
   const canvas = document.getElementById('chartFrenteProveedor');
   if (!canvas) return;
   const D = getFilteredData();
-  const activos = D.filter(r=>r['Estado']!=='4.Resuelta' && r['Frente proveedor']);
   const count = {};
-  activos.forEach(r => { count[r['Frente proveedor']] = (count[r['Frente proveedor']]||0)+1; });
-  const sorted = Object.entries(count).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  D.filter(r => r['Responsable']).forEach(r => {
+    count[r['Responsable']] = (count[r['Responsable']] || 0) + 1;
+  });
+  const sorted = Object.entries(count).sort((a,b) => b[1] - a[1]).slice(0, 15);
 
   destroyChart('chartFrenteProveedor');
   charts['chartFrenteProveedor'] = new Chart(canvas, {
     type:'bar',
     data:{
-      labels: sorted.map(x=>x[0]),
-      datasets:[{ label:'Deps. Activas', data:sorted.map(x=>x[1]),
-        backgroundColor: sorted.map((_,i)=>i<3?'#1565C0':i<6?'#1976D2':'#64B5F6'),
+      labels: sorted.map(x => x[0]),
+      datasets:[{ label:'Dependencias', data: sorted.map(x => x[1]),
+        backgroundColor: sorted.map((_,i) => gColor(i)),
         borderRadius:5 }]
     },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias activas` } } },
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } },
+        datalabels: undefined
+      },
       scales:{ x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, y:{grid:{display:false}} }
-    }
+    },
+    plugins:[{
+      id:'respTotalLabels',
+      afterDatasetsDraw(chart) {
+        const { ctx, data } = chart;
+        ctx.save();
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const meta = chart.getDatasetMeta(0);
+        meta.data.forEach((bar, i) => {
+          ctx.fillText(data.datasets[0].data[i], bar.x + 6, bar.y);
+        });
+        ctx.restore();
+      }
+    }]
   });
 }
 
@@ -1631,8 +1692,10 @@ function renderFrentesCards() {
   const frentesDep = unique(data.map(r=>r['Frente con dependencia']));
 
   const colorsBar = {
-    '1.Identificada':'#1565C0','2.Solicitada':'#F57C00',
-    '3.En progreso':'#6A1B9A','4.Resuelta':'#2E7D32'
+    '1.Identificada': G_PALETTE[0],
+    '2.Solicitada':   G_PALETTE[1],
+    '3.En progreso':  G_PALETTE[2],
+    '4.Resuelta':     G_PALETTE[3]
   };
   const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
 
@@ -1749,13 +1812,12 @@ function renderDetalleTable() {
         <td>${escHtml(r['Tipo de dependencia'])}</td>
         <td>${badgeCrit(r['Criticidad'])}</td>
         <td><span class="${dateClass(r['Fecha requerida'])}">${dateReq||'—'}</span></td>
-        <td><span class="${dateClass(r['Fecha Nueva'])}">${dateNva||'—'}</span></td>
         <td>${badgeEstado(r['Estado'])}</td>
         <td>${escHtml(r['Responsable'])}</td>
         <td>${r['OK']==='S'?'<span class="badge badge-si">✅</span>':'<span class="badge badge-no">❌</span>'}</td>
       </tr>
       <tr id="${rid}" class="row-detail" style="display:none">
-        <td colspan="10">
+        <td colspan="9">
           <div class="detail-grid">
             <div class="detail-item">
               <div class="detail-lbl">Frente con Dependencia</div>
@@ -1835,7 +1897,6 @@ function renderDetalleTable() {
               <th>Tipo</th>
               <th>Criticidad</th>
               <th>F. Requerida</th>
-              <th>F. Nueva</th>
               <th>Estado</th>
               <th>Responsable</th>
               <th>OK</th>
