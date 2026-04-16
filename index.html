@@ -1284,6 +1284,8 @@ function renderCharts() {
 //  ALERTAS
 // ============================================================
 function renderAlertas() {
+  const box = document.getElementById('alertasBox');
+  if (!box) return;
   const D = getFilteredData();
   const vencidas = D.filter(r => {
     if (r['Estado']==='4.Resuelta') return false;
@@ -1302,7 +1304,6 @@ function renderAlertas() {
   const resueltas = D.filter(r=>r['Estado']==='4.Resuelta').length;
   const pctRes = D.length ? Math.round(resueltas/D.length*100) : 0;
 
-  const box = document.getElementById('alertasBox');
   box.innerHTML = `
     <div class="alert-box alert-red">
       <div class="alert-icon">🔴</div>
@@ -1346,6 +1347,8 @@ function renderAlertas() {
 //  AVANCE POR FRENTE
 // ============================================================
 function renderAvanceFrente() {
+  const el = document.getElementById('avanceFrente');
+  if (!el) return;
   const D = getFilteredData();
   const frentes = unique(D.map(r=>r['Frente']));
   const rows = frentes.map(f => {
@@ -1365,7 +1368,7 @@ function renderAvanceFrente() {
       </div>
     `;
   });
-  document.getElementById('avanceFrente').innerHTML = rows.join('');
+  el.innerHTML = rows.join('');
 }
 
 // ============================================================
