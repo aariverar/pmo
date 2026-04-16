@@ -637,7 +637,16 @@
     <!-- Gráficos principales -->
     <div class="charts-grid">
       <div class="chart-card">
-        <h3><span class="dot"></span> Dependencias por Frente</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <h3 style="margin:0"><span class="dot"></span> Dependencias por Frente</h3>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+            <label style="color:var(--gray-600)">Desde</label>
+            <input type="date" id="frenteDesde" onchange="renderFrenteChart()" style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:6px">
+            <label style="color:var(--gray-600)">Hasta</label>
+            <input type="date" id="frenteHasta" onchange="renderFrenteChart()" style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:6px">
+            <button onclick="document.getElementById('frenteDesde').value='';document.getElementById('frenteHasta').value='';renderFrenteChart()" style="font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer">✕</button>
+          </div>
+        </div>
         <div class="chart-wrap"><canvas id="chartFrente"></canvas></div>
       </div>
       <div class="chart-card">
@@ -645,7 +654,12 @@
         <div class="chart-wrap"><canvas id="chartCriticidad"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3><span class="dot" style="background:var(--teal)"></span> Tipo de Dependencia</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+          <h3 style="margin:0"><span class="dot" style="background:var(--teal)"></span> Tipo de Dependencia</h3>
+          <select id="tipoFrenteFilter" onchange="renderTipoChart()" style="font-size:12px;padding:3px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">
+            <option value="">Todos los frentes</option>
+          </select>
+        </div>
         <div class="chart-wrap"><canvas id="chartTipo"></canvas></div>
       </div>
     </div>
@@ -666,6 +680,12 @@
     <div class="section-title"><span class="icon">👤</span> Top Responsables con más Dependencias Activas</div>
     <div class="chart-card" style="margin-bottom:28px">
       <div class="chart-wrap" style="height:260px"><canvas id="chartResponsables"></canvas></div>
+    </div>
+
+    <!-- Top Frente Proveedor -->
+    <div class="section-title"><span class="icon">🏭</span> Top Frentes Proveedores con más Dependencias Activas</div>
+    <div class="chart-card" style="margin-bottom:28px">
+      <div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div>
     </div>
 
     <!-- Tabla resumen por frente con dependencia -->
@@ -979,6 +999,7 @@ function renderTodo() {
   renderAlertas();
   renderAvanceFrente();
   renderTopResponsables();
+  renderTopFrenteProveedor();
   renderResumenFrente();
   renderFrentesCards();
   renderDetalle();
@@ -1032,9 +1053,9 @@ function ocultarPantallaBienvenida() {
       <div class="tab-panel active" id="tab-resumen">
         <div class="kpi-grid" id="kpiGrid"></div>
         <div class="charts-grid">
-          <div class="chart-card"><h3><span class="dot"></span> Dependencias por Frente</h3><div class="chart-wrap"><canvas id="chartFrente"></canvas></div></div>
+          <div class="chart-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px"><h3 style="margin:0"><span class="dot"></span> Dependencias por Frente</h3><div style="display:flex;align-items:center;gap:6px;font-size:12px"><label style="color:var(--gray-600)">Desde</label><input type="date" id="frenteDesde" onchange="renderFrenteChart()" style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:6px"><label style="color:var(--gray-600)">Hasta</label><input type="date" id="frenteHasta" onchange="renderFrenteChart()" style="font-size:12px;padding:3px 6px;border:1px solid #ccc;border-radius:6px"><button onclick="document.getElementById('frenteDesde').value='';document.getElementById('frenteHasta').value='';renderFrenteChart()" style="font-size:11px;padding:3px 8px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer">✕</button></div></div><div class="chart-wrap"><canvas id="chartFrente"></canvas></div></div>
           <div class="chart-card"><h3><span class="dot" style="background:var(--amber)"></span> Criticidad</h3><div class="chart-wrap"><canvas id="chartCriticidad"></canvas></div></div>
-          <div class="chart-card"><h3><span class="dot" style="background:var(--teal)"></span> Tipo de Dependencia</h3><div class="chart-wrap"><canvas id="chartTipo"></canvas></div></div>
+          <div class="chart-card"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px"><h3 style="margin:0"><span class="dot" style="background:var(--teal)"></span> Tipo de Dependencia</h3><select id="tipoFrenteFilter" onchange="renderTipoChart()" style="font-size:12px;padding:3px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer"><option value="">Todos los frentes</option></select></div><div class="chart-wrap"><canvas id="chartTipo"></canvas></div></div>
         </div>
         <div class="exec-grid">
           <div><div class="section-title"><span class="icon">🚨</span> Alertas de Gestión</div><div id="alertasBox"></div></div>
@@ -1042,6 +1063,8 @@ function ocultarPantallaBienvenida() {
         </div>
         <div class="section-title"><span class="icon">👤</span> Top Responsables con más Dependencias Activas</div>
         <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartResponsables"></canvas></div></div>
+        <div class="section-title"><span class="icon">🏭</span> Top Frentes Proveedores con más Dependencias Activas</div>
+        <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div></div>
         <div class="section-title"><span class="icon">📌</span> Frentes con Dependencia – Vista Resumen</div>
         <div id="resumenFrenteWrap"></div>
       </div>
@@ -1167,6 +1190,7 @@ function aplicarFiltroGlobal() {
   renderAlertas();
   renderAvanceFrente();
   renderTopResponsables();
+  renderTopFrenteProveedor();
   renderResumenFrente();
   renderFrentesCards();
   renderDetalle();
@@ -1238,14 +1262,43 @@ const COLORS_STATE = ['#1565C0','#F57C00','#6A1B9A','#2E7D32'];
 const COLORS_CRIT = ['#B71C1C','#F57F17','#1B5E20','#455A64'];
 const COLORS_TIPO = ['#EC0000','#1565C0','#2E7D32','#6A1B9A','#00695C'];
 
-function renderCharts() {
-  const D = getFilteredData();
-  // Frentes
+// Helper: convierte 'yyyy-mm-dd' a etiqueta de semana 'YYYY-Wnn (dd/mm - dd/mm)'
+function isoWeekLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  // Lunes de la semana ISO
+  const day = d.getDay() || 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - day + 1);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  // Número de semana ISO
+  const jan4 = new Date(mon.getFullYear(), 0, 4);
+  const weekNum = Math.ceil(((mon - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+  const fmt = dt => `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}`;
+  return `${mon.getFullYear()}-W${String(weekNum).padStart(2,'0')} (${fmt(mon)}–${fmt(sun)})`;
+}
+
+// Renderiza solo el gráfico de Dependencias por Frente según rango de fechas
+function renderFrenteChart() {
+  const desde = (document.getElementById('frenteDesde')?.value) || '';
+  const hasta  = (document.getElementById('frenteHasta')?.value) || '';
+  let D = getFilteredData();
+
+  if (desde || hasta) {
+    D = D.filter(r => {
+      const f = r['Fecha requerida'];
+      if (!f || f.length < 10) return false;
+      if (desde && f < desde) return false;
+      if (hasta && f > hasta) return false;
+      return true;
+    });
+  }
+
   const frentes = unique(D.map(r=>r['Frente']));
   const countFrentes = frentes.map(f => D.filter(r=>r['Frente']===f).length);
 
   destroyChart('chartFrente');
-  charts['chartFrente'] = new Chart(document.getElementById('chartFrente'), {
+  const canvas = document.getElementById('chartFrente');
+  if (!canvas) return;
+  charts['chartFrente'] = new Chart(canvas, {
     type:'bar',
     data:{ labels:frentes, datasets:[{ label:'Dependencias', data:countFrentes, backgroundColor:COLORS_RED, borderRadius:5 }] },
     options:{ responsive:true, maintainAspectRatio:false,
@@ -1253,6 +1306,12 @@ function renderCharts() {
       scales:{ y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'} }, x:{ grid:{display:false}, ticks:{maxRotation:25} } }
     }
   });
+}
+
+function renderCharts() {
+  const D = getFilteredData();
+
+  renderFrenteChart();
 
   // Criticidad — valores dinámicos desde los datos
   const crits = unique(D.map(r=>r['Criticidad']).filter(c=>c && c!==''));
@@ -1266,15 +1325,40 @@ function renderCharts() {
     }
   });
 
-  // Tipo dependencia — valores dinámicos desde los datos
-  const tipos = unique(D.map(r=>r['Tipo de dependencia']).filter(t=>t && t!==''));
-  const countTipo = tipos.map(t => D.filter(r=>r['Tipo de dependencia']===t).length);
+  // Tipo dependencia — poblar selector de frentes y delegar a renderTipoChart()
+  const tipoSel = document.getElementById('tipoFrenteFilter');
+  if (tipoSel) {
+    const frenteActual = tipoSel.value;
+    const frentesDisp = unique(D.map(r=>r['Frente']).filter(Boolean)).sort();
+    tipoSel.innerHTML = '<option value="">Todos los frentes</option>' +
+      frentesDisp.map(f => `<option value="${escHtml(f)}" ${f===frenteActual?'selected':''}>${escHtml(f)}</option>`).join('');
+  }
+  renderTipoChart();
+}
+
+// Renderiza el gráfico Tipo de Dependencia, filtrado por frente y ordenado desc
+function renderTipoChart() {
+  const sel = document.getElementById('tipoFrenteFilter');
+  const frente = sel ? sel.value : '';
+  let D = getFilteredData();
+  if (frente) D = D.filter(r => r['Frente'] === frente);
+
+  const tiposRaw = unique(D.map(r=>r['Tipo de dependencia']).filter(t=>t && t!==''));
+  // Ordenar de mayor a menor
+  const sorted = tiposRaw
+    .map(t => ({ label: t, count: D.filter(r=>r['Tipo de dependencia']===t).length }))
+    .sort((a,b) => b.count - a.count);
+  const tipos = sorted.map(x=>x.label);
+  const countTipo = sorted.map(x=>x.count);
+
   destroyChart('chartTipo');
-  charts['chartTipo'] = new Chart(document.getElementById('chartTipo'), {
+  const canvas = document.getElementById('chartTipo');
+  if (!canvas) return;
+  charts['chartTipo'] = new Chart(canvas, {
     type:'bar',
     data:{ labels:tipos, datasets:[{ label:'Count', data:countTipo, backgroundColor:COLORS_TIPO, borderRadius:5 }] },
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } } },
       scales:{ y:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, x:{grid:{display:false}} }
     }
   });
@@ -1392,6 +1476,34 @@ function renderTopResponsables() {
     },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false} },
+      scales:{ x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, y:{grid:{display:false}} }
+    }
+  });
+}
+
+// ============================================================
+//  TOP FRENTES PROVEEDORES
+// ============================================================
+function renderTopFrenteProveedor() {
+  const canvas = document.getElementById('chartFrenteProveedor');
+  if (!canvas) return;
+  const D = getFilteredData();
+  const activos = D.filter(r=>r['Estado']!=='4.Resuelta' && r['Frente proveedor']);
+  const count = {};
+  activos.forEach(r => { count[r['Frente proveedor']] = (count[r['Frente proveedor']]||0)+1; });
+  const sorted = Object.entries(count).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+  destroyChart('chartFrenteProveedor');
+  charts['chartFrenteProveedor'] = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels: sorted.map(x=>x[0]),
+      datasets:[{ label:'Deps. Activas', data:sorted.map(x=>x[1]),
+        backgroundColor: sorted.map((_,i)=>i<3?'#1565C0':i<6?'#1976D2':'#64B5F6'),
+        borderRadius:5 }]
+    },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias activas` } } },
       scales:{ x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, y:{grid:{display:false}} }
     }
   });
