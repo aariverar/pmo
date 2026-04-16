@@ -641,10 +641,6 @@
         <div class="chart-wrap"><canvas id="chartFrente"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3><span class="dot" style="background:var(--blue)"></span> Estado de Dependencias</h3>
-        <div class="chart-wrap"><canvas id="chartEstado"></canvas></div>
-      </div>
-      <div class="chart-card">
         <h3><span class="dot" style="background:var(--amber)"></span> Criticidad</h3>
         <div class="chart-wrap"><canvas id="chartCriticidad"></canvas></div>
       </div>
@@ -1037,7 +1033,6 @@ function ocultarPantallaBienvenida() {
         <div class="kpi-grid" id="kpiGrid"></div>
         <div class="charts-grid">
           <div class="chart-card"><h3><span class="dot"></span> Dependencias por Frente</h3><div class="chart-wrap"><canvas id="chartFrente"></canvas></div></div>
-          <div class="chart-card"><h3><span class="dot" style="background:var(--blue)"></span> Estado de Dependencias</h3><div class="chart-wrap"><canvas id="chartEstado"></canvas></div></div>
           <div class="chart-card"><h3><span class="dot" style="background:var(--amber)"></span> Criticidad</h3><div class="chart-wrap"><canvas id="chartCriticidad"></canvas></div></div>
           <div class="chart-card"><h3><span class="dot" style="background:var(--teal)"></span> Tipo de Dependencia</h3><div class="chart-wrap"><canvas id="chartTipo"></canvas></div></div>
         </div>
@@ -1216,11 +1211,11 @@ function renderKPIs() {
   }).length;
 
   const kpis = [
-    { label:'Total Dependencias', value: total,      sub:'Registros activos',  color:'black' },
-    { label:'Resueltas',          value: resuelta,    sub: pct+'% del total',   color:'green' },
-    { label:'En Progreso',        value: enProgreso,  sub:'Avanzando',          color:'amber' },
-    { label:'Solicitadas',        value: solicitada,  sub:'En gestión',         color:'blue' },
-    { label:'Identificadas',      value: identificada,sub:'Por iniciar',        color:'blue' },
+    { label:'Total Dependencias', value: total,       sub:'Registros activos',  color:'black' },
+    { label:'Identificadas',      value: identificada, sub:'Por iniciar',        color:'blue' },
+    { label:'Solicitadas',        value: solicitada,   sub:'En gestión',         color:'blue' },
+    { label:'En Progreso',        value: enProgreso,   sub:'Avanzando',          color:'amber' },
+    { label:'Resueltas',          value: resuelta,     sub: pct+'% del total',   color:'green' },
   ];
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
@@ -1259,32 +1254,20 @@ function renderCharts() {
     }
   });
 
-  // Estado
-  const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
-  const countEst = estados.map(e => D.filter(r=>r['Estado']===e).length);
-  destroyChart('chartEstado');
-  charts['chartEstado'] = new Chart(document.getElementById('chartEstado'), {
-    type:'doughnut',
-    data:{ labels:estados, datasets:[{ data:countEst, backgroundColor:COLORS_STATE, borderWidth:2, borderColor:'#fff' }] },
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ position:'bottom', labels:{font:{size:11}} } }
-    }
-  });
-
-  // Criticidad
-  const crits = ['Alta','Medio','Baja','Media'];
+  // Criticidad — valores dinámicos desde los datos
+  const crits = unique(D.map(r=>r['Criticidad']).filter(c=>c && c!==''));
   const countCrit = crits.map(c => D.filter(r=>r['Criticidad']===c).length);
   destroyChart('chartCriticidad');
   charts['chartCriticidad'] = new Chart(document.getElementById('chartCriticidad'), {
-    type:'pie',
+    type:'doughnut',
     data:{ labels:crits, datasets:[{ data:countCrit, backgroundColor:COLORS_CRIT, borderWidth:2, borderColor:'#fff' }] },
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'bottom', labels:{font:{size:11}} } }
     }
   });
 
-  // Tipo dependencia
-  const tipos = ['Técnica','Funcional','Infraestructura','Data','Arquitectura'];
+  // Tipo dependencia — valores dinámicos desde los datos
+  const tipos = unique(D.map(r=>r['Tipo de dependencia']).filter(t=>t && t!==''));
   const countTipo = tipos.map(t => D.filter(r=>r['Tipo de dependencia']===t).length);
   destroyChart('chartTipo');
   charts['chartTipo'] = new Chart(document.getElementById('chartTipo'), {
