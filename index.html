@@ -677,9 +677,9 @@
     </div>
 
     <!-- Top responsables -->
-    <div class="section-title"><span class="icon">👤</span> Top Responsables con más Dependencias Activas</div>
+    <div class="section-title"><span class="icon">👤</span> Top de Frentes con Dependencias</div>
     <div class="chart-card" style="margin-bottom:28px">
-      <div class="chart-wrap" style="height:260px"><canvas id="chartResponsables"></canvas></div>
+      <div class="chart-wrap" style="height:380px"><canvas id="chartResponsables"></canvas></div>
     </div>
 
     <!-- Top Frente Proveedor -->
@@ -1062,7 +1062,7 @@ function ocultarPantallaBienvenida() {
           <div><div class="section-title"><span class="icon">📈</span> Avance por Frente</div><div id="avanceFrente"></div></div>
         </div>
         <div class="section-title"><span class="icon">👤</span> Top Responsables con más Dependencias Activas</div>
-        <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartResponsables"></canvas></div></div>
+        <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:380px"><canvas id="chartResponsables"></canvas></div></div>
         <div class="section-title"><span class="icon">🏭</span> Top Frentes Proveedores con más Dependencias Activas</div>
         <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div></div>
         <div class="section-title"><span class="icon">📌</span> Frentes con Dependencia – Vista Resumen</div>
@@ -1456,27 +1456,66 @@ function renderAvanceFrente() {
 }
 
 // ============================================================
-//  TOP RESPONSABLES
+//  TOP RESPONSABLES POR FRENTE (barras apiladas)
 // ============================================================
 function renderTopResponsables() {
+  const canvas = document.getElementById('chartResponsables');
+  if (!canvas) return;
   const D = getFilteredData();
-  const activos = D.filter(r=>r['Estado']!=='4.Resuelta' && r['Responsable']);
-  const count = {};
-  activos.forEach(r => { count[r['Responsable']] = (count[r['Responsable']]||0)+1; });
-  const sorted = Object.entries(count).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+  // Frentes ordenados por total de dependencias desc
+  const frentes = unique(D.map(r=>r['Frente']).filter(Boolean));
+  const frentesTotales = frentes
+    .map(f => ({ f, tot: D.filter(r=>r['Frente']===f).length }))
+    .sort((a,b)=>b.tot-a.tot);
+  const frentesOrdenados = frentesTotales.map(x=>x.f);
+
+  // Responsables únicos (top 10 globales para no saturar la leyenda)
+  const respCount = {};
+  D.filter(r=>r['Responsable']).forEach(r=>{ respCount[r['Responsable']]=(respCount[r['Responsable']]||0)+1; });
+  const topResponsables = Object.entries(respCount).sort((a,b)=>b[1]-a[1]).slice(0,10).map(x=>x[0]);
+
+  // Paleta de colores para responsables
+  const palette = [
+    '#EC0000','#1565C0','#2E7D32','#6A1B9A','#00695C',
+    '#E65100','#AD1457','#37474F','#F9A825','#00838F'
+  ];
+
+  const datasets = topResponsables.map((resp, i) => ({
+    label: resp,
+    data: frentesOrdenados.map(f =>
+      D.filter(r=>r['Frente']===f && r['Responsable']===resp).length
+    ),
+    backgroundColor: palette[i % palette.length],
+    borderRadius: 3,
+    borderSkipped: false
+  }));
+
+  // Dataset "Otros" para responsables fuera del top 10
+  const otrosData = frentesOrdenados.map(f => {
+    const total = D.filter(r=>r['Frente']===f).length;
+    const topSum = topResponsables.reduce((s,resp)=>
+      s + D.filter(r=>r['Frente']===f && r['Responsable']===resp).length, 0);
+    return total - topSum;
+  });
+  if (otrosData.some(v=>v>0)) {
+    datasets.push({ label:'Otros', data:otrosData, backgroundColor:'#BDBDBD', borderRadius:3, borderSkipped:false });
+  }
 
   destroyChart('chartResponsables');
-  charts['chartResponsables'] = new Chart(document.getElementById('chartResponsables'), {
+  charts['chartResponsables'] = new Chart(canvas, {
     type:'bar',
-    data:{
-      labels: sorted.map(x=>x[0]),
-      datasets:[{ label:'Deps. Activas', data:sorted.map(x=>x[1]),
-        backgroundColor: sorted.map((_,i)=>i<3?'#EC0000':i<6?'#FF4444':'#FF9999'),
-        borderRadius:5 }]
-    },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{ x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, y:{grid:{display:false}} }
+    data:{ labels: frentesOrdenados, datasets },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, padding:8 } },
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.raw}` } }
+      },
+      scales:{
+        x:{ beginAtZero:true, stacked:true, grid:{color:'rgba(0,0,0,.05)'} },
+        y:{ stacked:true, grid:{display:false} }
+      }
     }
   });
 }
