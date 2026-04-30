@@ -685,7 +685,7 @@
     <!-- Top Responsables -->
     <div class="section-title"><span class="icon">👥</span> Top de Responsables</div>
     <div class="chart-card" style="margin-bottom:28px">
-      <div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div>
+      <div class="chart-wrap" id="respChartWrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div>
     </div>
 
     <!-- Tabla resumen por frente con dependencia -->
@@ -1064,7 +1064,7 @@ function ocultarPantallaBienvenida() {
         <div class="section-title"><span class="icon">👤</span> Top de Frentes con más Dependencias</div>
         <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:380px"><canvas id="chartResponsables"></canvas></div></div>
         <div class="section-title"><span class="icon">👥</span> Top de Responsables</div>
-        <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div></div>
+        <div class="chart-card" style="margin-bottom:28px"><div class="chart-wrap" id="respChartWrap" style="height:260px"><canvas id="chartFrenteProveedor"></canvas></div></div>
         <div class="section-title"><span class="icon">📌</span> Frentes con Dependencia – Vista Resumen</div>
         <div id="resumenFrenteWrap"></div>
       </div>
@@ -1643,12 +1643,16 @@ function renderTopResponsables() {
 function renderTopFrenteProveedor() {
   const canvas = document.getElementById('chartFrenteProveedor');
   if (!canvas) return;
-  const D = getFilteredData();
+  const D = getFilteredData().filter(r => r['Estado'] !== '4.Resuelta');
   const count = {};
   D.filter(r => r['Responsable']).forEach(r => {
     count[r['Responsable']] = (count[r['Responsable']] || 0) + 1;
   });
-  const sorted = Object.entries(count).sort((a,b) => b[1] - a[1]).slice(0, 15);
+  const sorted = Object.entries(count).sort((a,b) => b[1] - a[1]).slice(0, 20);
+
+  // Altura dinámica: 36px por responsable, mínimo 260px
+  const wrap = document.getElementById('respChartWrap');
+  if (wrap) wrap.style.height = Math.max(260, sorted.length * 36) + 'px';
 
   destroyChart('chartFrenteProveedor');
   charts['chartFrenteProveedor'] = new Chart(canvas, {
@@ -1662,10 +1666,12 @@ function renderTopFrenteProveedor() {
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:false },
-        tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } },
-        datalabels: undefined
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } }
       },
-      scales:{ x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, y:{grid:{display:false}} }
+      scales:{
+        x:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}},
+        y:{ grid:{display:false}, ticks:{ font:{size:11}, autoSkip:false } }
+      }
     },
     plugins:[{
       id:'respTotalLabels',
