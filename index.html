@@ -1298,7 +1298,19 @@ function renderFrenteChart() {
   }
 
   const frentes = unique(D.map(r=>r['Frente']));
-  const countFrentes = frentes.map(f => D.filter(r=>r['Frente']===f).length);
+  const estados = unique(D.map(r=>r['Estado']).filter(Boolean)).sort();
+
+  // Dataset por cada Estado (barras apiladas)
+  const estadoDatasets = estados.map((est, i) => ({
+    label: est,
+    data: frentes.map(f => D.filter(r=>r['Frente']===f && r['Estado']===est).length),
+    backgroundColor: gColor(i),
+    borderRadius: 3,
+    borderSkipped: false
+  }));
+
+  // Totales por frente para etiquetas
+  const totalesFrente = frentes.map(f => D.filter(r=>r['Frente']===f).length);
 
   // Altura dinámica: espacio para barras + etiquetas en diagonal
   const wrap = document.getElementById('frenteChartWrap');
@@ -1309,30 +1321,31 @@ function renderFrenteChart() {
   if (!canvas) return;
   charts['chartFrente'] = new Chart(canvas, {
     type:'bar',
-    data:{ labels:frentes, datasets:[{ label:'Dependencias', data:countFrentes, backgroundColor:COLORS_RED, borderRadius:5 }] },
+    data:{ labels:frentes, datasets: estadoDatasets },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{
-        legend:{display:false},
-        tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } }
+        legend:{ position:'bottom', labels:{ font:{size:11}, boxWidth:12, padding:8 } },
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.dataset.label}: ${ctx.raw}` } }
       },
       scales:{
-        y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'} },
-        x:{ grid:{display:false}, ticks:{ maxRotation:45, minRotation:45, font:{size:11}, autoSkip:false } }
+        y:{ beginAtZero:true, stacked:true, grid:{color:'rgba(0,0,0,.05)'} },
+        x:{ stacked:true, grid:{display:false}, ticks:{ maxRotation:45, minRotation:45, font:{size:11}, autoSkip:false } }
       }
     },
     plugins:[{
-      id:'frenteLabels',
+      id:'frenteTotalLabels',
       afterDatasetsDraw(chart) {
         const {ctx} = chart;
-        chart.getDatasetMeta(0).data.forEach((bar, i) => {
-          const val = chart.data.datasets[0].data[i];
+        const lastMeta = chart.getDatasetMeta(estadoDatasets.length - 1);
+        lastMeta.data.forEach((bar, i) => {
+          const total = totalesFrente[i];
           ctx.save();
           ctx.font = 'bold 11px sans-serif';
           ctx.fillStyle = '#333';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'bottom';
-          ctx.fillText(val, bar.x, bar.y - 3);
+          ctx.fillText(total, bar.x, bar.y - 3);
           ctx.restore();
         });
       }
@@ -1542,9 +1555,9 @@ function renderAvanceFrente() {
 function renderTopResponsables() {
   const canvas = document.getElementById('chartResponsables');
   if (!canvas) return;
-  const D = getFilteredData();
+  const D = getFilteredData().filter(r => r['Estado'] !== '4.Resuelta');
 
-  // Frentes ordenados por total de dependencias desc
+  // Frentes ordenados por total de dependencias desc (excluye resueltas)
   const frentes = unique(D.map(r=>r['Frente']).filter(Boolean));
   const frentesTotales = frentes
     .map(f => ({ f, tot: D.filter(r=>r['Frente']===f).length }))
