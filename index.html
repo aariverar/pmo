@@ -1312,20 +1312,31 @@ function renderFrenteChart() {
     data:{ labels:frentes, datasets:[{ label:'Dependencias', data:countFrentes, backgroundColor:COLORS_RED, borderRadius:5 }] },
     options:{
       responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } } },
+      plugins:{
+        legend:{display:false},
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } }
+      },
       scales:{
         y:{ beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'} },
-        x:{
-          grid:{ display:false },
-          ticks:{
-            maxRotation: 45,
-            minRotation: 45,
-            font:{ size:11 },
-            autoSkip: false
-          }
-        }
+        x:{ grid:{display:false}, ticks:{ maxRotation:45, minRotation:45, font:{size:11}, autoSkip:false } }
       }
-    }
+    },
+    plugins:[{
+      id:'frenteLabels',
+      afterDatasetsDraw(chart) {
+        const {ctx} = chart;
+        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+          const val = chart.data.datasets[0].data[i];
+          ctx.save();
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillStyle = '#333';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(val, bar.x, bar.y - 3);
+          ctx.restore();
+        });
+      }
+    }]
   });
 }
 
@@ -1342,8 +1353,29 @@ function renderCharts() {
     type:'doughnut',
     data:{ labels:crits, datasets:[{ data:countCrit, backgroundColor:COLORS_CRIT, borderWidth:2, borderColor:'#fff' }] },
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ position:'bottom', labels:{font:{size:11}} } }
-    }
+      plugins:{
+        legend:{ position:'bottom', labels:{font:{size:11}} },
+        tooltip:{ callbacks:{ label: ctx=>`${ctx.label}: ${ctx.raw}` } }
+      }
+    },
+    plugins:[{
+      id:'critLabels',
+      afterDatasetsDraw(chart) {
+        const {ctx, data} = chart;
+        chart.getDatasetMeta(0).data.forEach((arc, i) => {
+          const val = data.datasets[0].data[i];
+          if (!val) return;
+          const {x, y} = arc.tooltipPosition();
+          ctx.save();
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(val, x, y);
+          ctx.restore();
+        });
+      }
+    }]
   });
 
   // Tipo dependencia — poblar selector de frentes y delegar a renderTipoChart()
@@ -1381,7 +1413,23 @@ function renderTipoChart() {
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx=>`${ctx.raw} dependencias` } } },
       scales:{ y:{beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}}, x:{grid:{display:false}} }
-    }
+    },
+    plugins:[{
+      id:'tipoLabels',
+      afterDatasetsDraw(chart) {
+        const {ctx} = chart;
+        chart.getDatasetMeta(0).data.forEach((bar, i) => {
+          const val = chart.data.datasets[0].data[i];
+          ctx.save();
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillStyle = '#333';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(val, bar.x, bar.y - 3);
+          ctx.restore();
+        });
+      }
+    }]
   });
 }
 
