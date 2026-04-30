@@ -1267,6 +1267,15 @@ const COLORS_STATE = gColors(4);
 const COLORS_CRIT  = gColors(4);
 const COLORS_TIPO  = gColors(5);
 
+// Colores fijos por Estado — Resuelta siempre verde #62B967
+const ESTADO_COLOR = {
+  '1.Identificada': G_PALETTE[0],   // rojo
+  '2.Solicitada':   G_PALETTE[1],   // azul
+  '3.En progreso':  G_PALETTE[2],   // gris medio
+  '4.Resuelta':     '#1A1A1A'        // negro
+};
+function estadoColor(est) { return ESTADO_COLOR[est] || G_PALETTE[3]; }
+
 // Helper: convierte 'yyyy-mm-dd' a etiqueta de semana 'YYYY-Wnn (dd/mm - dd/mm)'
 function isoWeekLabel(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -1301,10 +1310,10 @@ function renderFrenteChart() {
   const estados = unique(D.map(r=>r['Estado']).filter(Boolean)).sort();
 
   // Dataset por cada Estado (barras apiladas)
-  const estadoDatasets = estados.map((est, i) => ({
+  const estadoDatasets = estados.map((est) => ({
     label: est,
     data: frentes.map(f => D.filter(r=>r['Frente']===f && r['Estado']===est).length),
-    backgroundColor: gColor(i),
+    backgroundColor: estadoColor(est),
     borderRadius: 3,
     borderSkipped: false
   }));
@@ -1774,12 +1783,7 @@ function renderFrentesCards() {
 
   const frentesDep = unique(data.map(r=>r['Frente con dependencia']));
 
-  const colorsBar = {
-    '1.Identificada': G_PALETTE[0],
-    '2.Solicitada':   G_PALETTE[1],
-    '3.En progreso':  G_PALETTE[2],
-    '4.Resuelta':     G_PALETTE[3]
-  };
+  const colorsBar = ESTADO_COLOR;
   const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
 
   const cards = frentesDep.map(fd => {
