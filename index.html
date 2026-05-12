@@ -236,6 +236,8 @@
     .badge-solicitada   { background: #E3F2FD; color: #1565C0; }
     .badge-progreso     { background: #F3E5F5; color: #6A1B9A; }
     .badge-resuelta     { background: #E8F5E9; color: #2E7D32; }
+    .badge-vencida      { background: #FFEBEE; color: #B71C1C; }
+    .badge-reprogramada { background: #E3F2FD; color: #1565C0; }
 
     /* Criticidad badges */
     .badge-alta  { background: #FFEBEE; color: #B71C1C; }
@@ -710,9 +712,9 @@
         <label>Estado</label>
         <select id="fEstado2" onchange="renderFrentesCards()">
           <option value="">Todos</option>
-          <option>1.Identificada</option>
-          <option>2.Solicitada</option>
-          <option>3.En progreso</option>
+          <option>1.En progreso</option>
+          <option>2.Reprogramada</option>
+          <option>3.Vencida</option>
           <option>4.Resuelta</option>
         </select>
       </div>
@@ -748,9 +750,9 @@
         <label>Estado</label>
         <select id="dEstado" onchange="renderDetalle()">
           <option value="">Todos</option>
-          <option>1.Identificada</option>
-          <option>2.Solicitada</option>
-          <option>3.En progreso</option>
+          <option>1.En progreso</option>
+          <option>2.Reprogramada</option>
+          <option>3.Vencida</option>
           <option>4.Resuelta</option>
         </select>
       </div>
@@ -814,9 +816,9 @@
         <label>Estado</label>
         <select id="pEstado" onchange="renderPivot()">
           <option value="">Todos</option>
-          <option>1.Identificada</option>
-          <option>2.Solicitada</option>
-          <option>3.En progreso</option>
+          <option>1.En progreso</option>
+          <option>2.Reprogramada</option>
+          <option>3.Vencida</option>
           <option>4.Resuelta</option>
         </select>
       </div>
@@ -835,9 +837,9 @@
         <label>Estado</label>
         <select id="tEstado" onchange="renderTimeline()">
           <option value="">Todos</option>
-          <option>1.Identificada</option>
-          <option>2.Solicitada</option>
-          <option>3.En progreso</option>
+          <option>1.En progreso</option>
+          <option>2.Reprogramada</option>
+          <option>3.Vencida</option>
           <option>4.Resuelta</option>
         </select>
       </div>
@@ -937,11 +939,20 @@ function dateClass(str) {
 
 function badgeEstado(est) {
   const map = {
-    '1.identificada':'badge-identificada','2.solicitada':'badge-solicitada',
-    '3.en progreso':'badge-progreso','4.resuelta':'badge-resuelta'
+    '1.en progreso':   'badge-progreso',
+    '2.reprogramada':  'badge-reprogramada',
+    '3.vencida':       'badge-vencida',
+    '4.resuelta':      'badge-resuelta',
+    // compatibilidad con estados anteriores
+    '1.identificada':  'badge-identificada',
+    '2.solicitada':    'badge-solicitada',
+    '3.en progreso':   'badge-progreso'
   };
   const cls = map[(est||'').toLowerCase()] || 'badge-identificada';
-  const icons = {'1.identificada':'🔵','2.solicitada':'📤','3.en progreso':'⚙️','4.resuelta':'✅'};
+  const icons = {
+    '1.en progreso':'⚙️','2.reprogramada':'📅','3.vencida':'🔴','4.resuelta':'✅',
+    '1.identificada':'🔵','2.solicitada':'📤','3.en progreso':'⚙️'
+  };
   const icon = icons[(est||'').toLowerCase()] || '🔵';
   return `<span class="badge ${cls}">${icon} ${est||'—'}</span>`;
 }
@@ -961,7 +972,14 @@ function escHtml(s){
 function cleanData(data) {
   return data.map(r => {
     const out = {};
-    for (const k in r) out[k] = (r[k]==='0'||r[k]==='nan'||r[k]==='NaN')?'':String(r[k]).trim();
+    for (const k in r) {
+      const v = (r[k]==='0'||r[k]==='nan'||r[k]==='NaN') ? '' : String(r[k]).trim();
+      out[k] = v;
+    }
+    // Normalizar Estado: quitar espacios alrededor del punto (ej: "2. Reprogramada" → "2.Reprogramada")
+    if (out['Estado']) {
+      out['Estado'] = out['Estado'].replace(/^(\d+)\.\s+/, '$1.');
+    }
     return out;
   }).filter(r => r['Frente'] && r['Frente'] !== '');
 }
@@ -1072,7 +1090,7 @@ function ocultarPantallaBienvenida() {
         <div class="section-title"><span class="icon">🏗</span> Detalle por Frente con Dependencia</div>
         <div class="filters-bar" id="filtrosFrentes">
           <div class="filter-group"><label>Frente</label><select id="fFrente2" onchange="renderFrentesCards()"><option value="">Todos</option></select></div>
-          <div class="filter-group"><label>Estado</label><select id="fEstado2" onchange="renderFrentesCards()"><option value="">Todos</option><option>1.Identificada</option><option>2.Solicitada</option><option>3.En progreso</option><option>4.Resuelta</option></select></div>
+          <div class="filter-group"><label>Estado</label><select id="fEstado2" onchange="renderFrentesCards()"><option value="">Todos</option><option>1.En progreso</option><option>2.Reprogramada</option><option>3.Vencida</option><option>4.Resuelta</option></select></div>
           <div class="filter-group"><label>Criticidad</label><select id="fCrit2" onchange="renderFrentesCards()"><option value="">Todas</option><option>Alta</option><option>Medio</option><option>Baja</option></select></div>
           <button class="btn-clear" onclick="limpiarFiltros2()">✕ Limpiar</button>
         </div>
@@ -1083,7 +1101,7 @@ function ocultarPantallaBienvenida() {
         <div class="filters-bar">
           <div class="filter-group"><label>Frente</label><select id="dFrente" onchange="renderDetalle()"><option value="">Todos</option></select></div>
           <div class="filter-group"><label>Frente c/ Dep.</label><select id="dFrenteDep" onchange="renderDetalle()"><option value="">Todos</option></select></div>
-          <div class="filter-group"><label>Estado</label><select id="dEstado" onchange="renderDetalle()"><option value="">Todos</option><option>1.Identificada</option><option>2.Solicitada</option><option>3.En progreso</option><option>4.Resuelta</option></select></div>
+          <div class="filter-group"><label>Estado</label><select id="dEstado" onchange="renderDetalle()"><option value="">Todos</option><option>1.En progreso</option><option>2.Reprogramada</option><option>3.Vencida</option><option>4.Resuelta</option></select></div>
           <div class="filter-group"><label>Criticidad</label><select id="dCrit" onchange="renderDetalle()"><option value="">Todas</option><option>Alta</option><option>Medio</option><option>Media</option><option>Baja</option></select></div>
           <div class="filter-group"><label>Tipo</label><select id="dTipo" onchange="renderDetalle()"><option value="">Todos</option><option>Técnica</option><option>Funcional</option><option>Infraestructura</option><option>Data</option><option>Arquitectura</option></select></div>
           <div class="filter-group"><label>Responsable</label><input type="text" id="dResp" placeholder="Buscar..." oninput="renderDetalle()" /></div>
@@ -1097,13 +1115,13 @@ function ocultarPantallaBienvenida() {
         <div class="filters-bar" style="margin-bottom:20px">
           <div class="filter-group"><label>Vista Pivot</label><select id="pivotTipo" onchange="renderPivot()"><option value="frente_estado">Frente × Estado</option><option value="frente_criticidad">Frente × Criticidad</option><option value="frentedep_estado">Frente c/Dep × Estado</option><option value="estado_mes">Estado × Mes (Fecha requerida)</option><option value="frente_mes">Frente × Mes (Fecha requerida)</option><option value="frente_tipo">Frente × Tipo Dependencia</option></select></div>
           <div class="filter-group"><label>Frente</label><select id="pFrente" onchange="renderPivot()"><option value="">Todos</option></select></div>
-          <div class="filter-group"><label>Estado</label><select id="pEstado" onchange="renderPivot()"><option value="">Todos</option><option>1.Identificada</option><option>2.Solicitada</option><option>3.En progreso</option><option>4.Resuelta</option></select></div>
+          <div class="filter-group"><label>Estado</label><select id="pEstado" onchange="renderPivot()"><option value="">Todos</option><option>1.En progreso</option><option>2.Reprogramada</option><option>3.Vencida</option><option>4.Resuelta</option></select></div>
         </div>
         <div class="pivot-wrap" id="pivotWrap"></div>
         <div class="section-title" style="margin-top:28px"><span class="icon">🗓</span> Timeline de Dependencias – Comparativa de Fechas</div>
         <div class="filters-bar">
           <div class="filter-group"><label>Frente</label><select id="tFrente" onchange="renderTimeline()"><option value="">Todos</option></select></div>
-          <div class="filter-group"><label>Estado</label><select id="tEstado" onchange="renderTimeline()"><option value="">Todos</option><option>1.Identificada</option><option>2.Solicitada</option><option>3.En progreso</option><option>4.Resuelta</option></select></div>
+          <div class="filter-group"><label>Estado</label><select id="tEstado" onchange="renderTimeline()"><option value="">Todos</option><option>1.En progreso</option><option>2.Reprogramada</option><option>3.Vencida</option><option>4.Resuelta</option></select></div>
           <div class="filter-group"><label>Solo Vencidas</label><select id="tVencidas" onchange="renderTimeline()"><option value="">Todas</option><option value="1">Sí, solo vencidas</option></select></div>
           <button class="btn-clear" onclick="limpiarFiltros4()">✕ Limpiar</button>
         </div>
@@ -1221,25 +1239,17 @@ function renderKPIs() {
   const D = getFilteredData();
   const total = D.length;
   const resuelta = D.filter(r=>r['Estado']==='4.Resuelta').length;
-  const enProgreso = D.filter(r=>r['Estado']==='3.En progreso').length;
-  const solicitada = D.filter(r=>r['Estado']==='2.Solicitada').length;
-  const identificada = D.filter(r=>r['Estado']==='1.Identificada').length;
-  const alta = D.filter(r=>r['Criticidad'].toLowerCase()==='alta').length;
+  const enProgreso = D.filter(r=>r['Estado']==='1.En progreso').length;
+  const reprogramadas = D.filter(r=>r['Estado']==='2.Reprogramada').length;
+  const vencidas = D.filter(r=>r['Estado']==='3.Vencida').length;
   const pct = total ? Math.round(resuelta/total*100) : 0;
 
-  // Dependencias vencidas (fecha requerida pasada, no resuelta)
-  const vencidas = D.filter(r => {
-    if (r['Estado']==='4.Resuelta') return false;
-    const d = fmtDate(r['Fecha requerida']);
-    return d && d < today;
-  }).length;
-
   const kpis = [
-    { label:'Total Dependencias', value: total,       sub:'Registros activos',  color:'black' },
-    { label:'Identificadas',      value: identificada, sub:'Por iniciar',        color:'blue' },
-    { label:'Solicitadas',        value: solicitada,   sub:'En gestión',         color:'blue' },
-    { label:'En Progreso',        value: enProgreso,   sub:'Avanzando',          color:'amber' },
-    { label:'Resueltas',          value: resuelta,     sub: pct+'% del total',   color:'green' },
+    { label:'Total Dependencias', value: total,        sub:'Registros activos',        color:'black' },
+    { label:'Vencidas',           value: vencidas,     sub:'Estado 3.Vencida',         color:'red'   },
+    { label:'Reprogramadas',      value: reprogramadas,sub:'Estado 2.Reprogramada',    color:'blue'  },
+    { label:'En Progreso',        value: enProgreso,   sub:'Estado 1.En progreso',     color:'amber' },
+    { label:'Resueltas',          value: resuelta,     sub: pct+'% del total',         color:'green' },
   ];
 
   document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
@@ -1267,12 +1277,17 @@ const COLORS_STATE = gColors(4);
 const COLORS_CRIT  = gColors(4);
 const COLORS_TIPO  = gColors(5);
 
-// Colores fijos por Estado — Resuelta siempre verde #62B967
+// Colores fijos por Estado
 const ESTADO_COLOR = {
-  '1.Identificada': G_PALETTE[0],   // rojo
-  '2.Solicitada':   G_PALETTE[1],   // azul
-  '3.En progreso':  G_PALETTE[2],   // gris medio
-  '4.Resuelta':     '#1A1A1A'        // negro
+  '1.En progreso':   G_PALETTE[2],   // gris medio
+  '2.Reprogramada':  G_PALETTE[1],   // azul
+  '3.Vencida':       G_PALETTE[0],   // rojo
+  '4.Resuelta':      '#1A1A1A',       // negro
+  // compatibilidad estados anteriores
+  '1.Identificada':  G_PALETTE[0],
+  '2.Solicitada':    G_PALETTE[1],
+  '3.En progreso':   G_PALETTE[2],
+  '5.Finalizado':    '#6A0DAD'
 };
 function estadoColor(est) { return ESTADO_COLOR[est] || G_PALETTE[3]; }
 
@@ -1463,32 +1478,31 @@ function renderAlertas() {
   if (!box) return;
   const D = getFilteredData();
 
-  // Vencidas: sumatoria de Identificadas + Solicitadas + En Progreso
-  const ESTADOS_ACTIVOS = ['1.Identificada','2.Solicitada','3.En progreso'];
-  const vencidas = D.filter(r => ESTADOS_ACTIVOS.includes(r['Estado']));
+  // Vencidas: estado 3.Vencida (también soporta estados anteriores con fecha vencida)
+  const ESTADO_CERRADO = ['4.Resuelta'];
+  const vencidas = D.filter(r => r['Estado'] === '3.Vencida');
 
-  // Criticidad Alta: mismo conteo que el gráfico Criticidad (todos los registros con Alta, sin filtro de estado)
+  // Criticidad Alta: todos los registros con Alta, sin filtro de estado
   const alta = D.filter(r =>
     r['Criticidad'] && r['Criticidad'].trim().toLowerCase() === 'alta'
   );
 
-  const sinResp = D.filter(r => !r['Responsable'] && r['Estado'] !== '4.Resuelta');
+  const sinResp = D.filter(r => !r['Responsable'] && !ESTADO_CERRADO.includes(r['Estado']));
 
   // Próximos 7 días: busca en DATA completo los 7 días posteriores a HASTA (o a hoy si no hay HASTA)
-  // Se usa DATA directamente porque esos registros quedan fuera del rango filtrado
   const hastaVal = document.getElementById('gfHasta')?.value || '';
   const refStart = hastaVal ? new Date(hastaVal + 'T00:00:00') : new Date(today);
   refStart.setDate(refStart.getDate() + 1);
   const refEnd = new Date(refStart); refEnd.setDate(refStart.getDate() + 6);
 
   const proximas = DATA.filter(r => {
-    if (r['Estado'] === '4.Resuelta') return false;
+    if (ESTADO_CERRADO.includes(r['Estado'])) return false;
     const d = fmtDate(r['Fecha requerida']);
     if (!d) return false;
     return d >= refStart && d <= refEnd;
   });
 
-  const resueltas = D.filter(r => r['Estado'] === '4.Resuelta').length;
+  const resueltas = D.filter(r => ESTADO_CERRADO.includes(r['Estado'])).length;
   const pctRes = D.length ? Math.round(resueltas / D.length * 100) : 0;
 
   box.innerHTML = `
@@ -1516,7 +1530,7 @@ function renderAlertas() {
     <div class="alert-box alert-green">
       <div class="alert-icon">✅</div>
       <div class="alert-body">
-        <div class="alert-title">Resueltas: ${resueltas} de ${D.length}</div>
+        <div class="alert-title">Resueltas / Finalizadas: ${resueltas} de ${D.length}</div>
         <div>Porcentaje de avance: ${pctRes}%</div>
       </div>
     </div>
@@ -1700,7 +1714,7 @@ function renderTopFrenteProveedor() {
 function renderResumenFrente() {
   const D = getFilteredData();
   const frentesDep = unique(D.map(r=>r['Frente con dependencia']));
-  const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
+  const estados = ['1.En progreso','2.Reprogramada','3.Vencida','4.Resuelta'];
 
   const rows = frentesDep.map(fd => {
     const items = D.filter(r=>r['Frente con dependencia']===fd);
@@ -1777,7 +1791,7 @@ function renderFrentesCards() {
   const frentesDep = unique(data.map(r=>r['Frente con dependencia']));
 
   const colorsBar = ESTADO_COLOR;
-  const estados = ['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
+  const estados = ['1.En progreso','2.Reprogramada','3.Vencida','4.Resuelta'];
 
   const cards = frentesDep.map(fd => {
     const items = data.filter(r=>r['Frente con dependencia']===fd);
@@ -2023,7 +2037,7 @@ function renderPivot() {
 
   if (tipo==='frente_estado') {
     rowField='Frente'; colField='Estado';
-    colValues=['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
+    colValues=['1.En progreso','2.Reprogramada','3.Vencida','4.Resuelta'];
     rowValues = unique(data.map(r=>r['Frente']));
   } else if (tipo==='frente_criticidad') {
     rowField='Frente'; colField='Criticidad';
@@ -2031,7 +2045,7 @@ function renderPivot() {
     rowValues = unique(data.map(r=>r['Frente']));
   } else if (tipo==='frentedep_estado') {
     rowField='Frente con dependencia'; colField='Estado';
-    colValues=['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
+    colValues=['1.En progreso','2.Reprogramada','3.Vencida','4.Resuelta'];
     rowValues = unique(data.map(r=>r['Frente con dependencia']));
   } else if (tipo==='estado_mes') {
     // Agrupar por mes de Fecha requerida
@@ -2040,7 +2054,7 @@ function renderPivot() {
       const d=fmtDate(r['Fecha requerida']); if(!d) return null;
       return d.toISOString().substring(0,7);
     }).filter(Boolean)).sort();
-    rowValues=['1.Identificada','2.Solicitada','3.En progreso','4.Resuelta'];
+    rowValues=['1.En progreso','2.Reprogramada','3.Vencida','4.Resuelta'];
   } else if (tipo==='frente_mes') {
     rowField='Frente'; colField='__mes__';
     colValues = unique(data.map(r=>{
@@ -2422,6 +2436,11 @@ function cargarHoja() {
     const newData = cleanData(normalized);
     DATA.length = 0;
     newData.forEach(r => DATA.push(r));
+
+    // Debug: mostrar estados detectados en consola
+    const estadosDetectados = [...new Set(DATA.map(r=>r['Estado']).filter(Boolean))].sort();
+    console.log('Estados detectados en el Excel:', estadosDetectados);
+    console.log('Total 2.Reprogramada:', DATA.filter(r=>r['Estado']==='2.Reprogramada').length);
 
     // Si venimos de la pantalla de bienvenida, restaurar el dashboard
     ocultarPantallaBienvenida();
